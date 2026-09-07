@@ -17,7 +17,7 @@
 | 文件 | 作用 |
 |------|------|
 | `common.py` | 统一实现：数据读取、网格/直方图工具、计数校验、TPIR@FPIR 指标 |
-| `cores/baseline.py` | cluster_utils 基准方法（默认找仓库上级目录或 `CLUSTER_UTILS_PATH`） |
+| `cores/baseline.py` | cluster_utils 基准方法（仓库内标准副本 `cluster_utils.py`，默认 v5；可用 `CLUSTER_UTILS_PATH`/`CLUSTER_UTILS_VER` 覆盖） |
 | `cores/<model>.py` | 各 LLM 实现的核心计算（从各模型目录原代码提炼，注释标明出处与参数） |
 | `run_one.py` | 单模型执行器：读取 -> core -> 校验 -> 指标 -> JSON |
 | `run_eval.py` | 两阶段调度器：超时/内存监控/晋级流程 |
@@ -70,7 +70,7 @@ def compute(feats: np.ndarray,   # (N,512) float32，已 L2 归一化（统一 l
 
 | core | 来源（模型目录原实现） | 核心特征 |
 |------|------------------------|----------|
-| `baseline` | cluster_utils `get_sim_matrix_large_scale_v4` | 动态调度分块 + 内部 20M bins（聚合到统一网格） |
+| `baseline` | 仓库内 `benchmark/cluster_utils.py` `get_sim_matrix_large_scale_v5` | 动态调度分块 + 内部 20M bins（聚合到统一网格；裁剪版仅保留评估相关代码） |
 | `glm` | `glm/eval_similar.py` | spawn + 动态 tile 队列；fp32（关 TF32） |
 | `grok` | `grok/eval_similarity.py` | 线程池（每 GPU 一线程）；对数切分；fp32 分块 histc |
 | `qwen` | `qwen/eval_v2_multi_gpu.py` | fork；按行工作量静态均衡；对角块列跳过；bincount |

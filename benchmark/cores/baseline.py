@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-基准 core: cluster_utils（仓库外参考实现；查找顺序：环境变量 CLUSTER_UTILS_PATH
-指定路径 -> 仓库上级目录 cluster_utils.py）。
+基准 core: cluster_utils（标准评估基准，仓库内副本 benchmark/cluster_utils.py）。
+
+仓库内副本由原始实现裁剪而来（移除 get_feat/get_real_path/merge_images 及其唯一
+调用方 process_docs 等旧文件夹聚类管线，仅保留相似度矩阵/直方图评估相关代码），
+保证开源仓库自包含、可复现。
+查找顺序：环境变量 CLUSTER_UTILS_PATH（实验用外部副本）-> 仓库内
+benchmark/cluster_utils.py -> 仓库上级目录（历史遗留位置）。
 
 默认调用 get_sim_matrix_large_scale_v5（v4 的升级版：masked_fill+histc 替代布尔索引、
 neg_hist=full_hist-pos_hist、可选 fp16 Tensor Core、显存更低；原 scripts/test_baseline
@@ -21,20 +26,21 @@ import numpy as np
 from .. import common
 
 MODEL_NAME = 'baseline'
-MODEL_DESC = 'cluster_utils 基准方法（v5 动态调度大块矩阵乘 + 20M bins 直方图）'
-ORIGIN = ('cluster_utils.py:get_sim_matrix_large_scale_v5（v4 升级版：masked_fill+histc、'
-          'neg=full-pos、可选 fp16；默认 v5，可用环境变量切回 v4）')
+MODEL_DESC = 'cluster_utils 基准方法（v5 动态调度大块矩阵乘 + 20M bins 直方图；仓库内裁剪副本）'
+ORIGIN = ('benchmark/cluster_utils.py:get_sim_matrix_large_scale_v5（v4 升级版：'
+          'masked_fill+histc、neg=full-pos、可选 fp16；默认 v5，可用环境变量切回 v4）')
 
 _FACTOR = 20_000_000 // common.BINS
 
 
 def _find_cluster_utils():
+    here = os.path.dirname(os.path.abspath(__file__))          # benchmark/cores
     cands = []
     env = os.environ.get('CLUSTER_UTILS_PATH')
     if env:
         cands.append(env)
-    here = os.path.dirname(os.path.abspath(__file__))          # benchmark/cores
-    cands.append(os.path.join(here, '..', '..', '..', 'cluster_utils.py'))  # 仓库上级目录
+    cands.append(os.path.join(here, '..', 'cluster_utils.py'))                # 仓库内标准副本
+    cands.append(os.path.join(here, '..', '..', '..', 'cluster_utils.py'))    # 历史遗留位置
     for p in cands:
         if os.path.exists(p):
             return os.path.abspath(p)
