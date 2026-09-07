@@ -37,28 +37,33 @@ else
 fi
 
 # 3. 检查代码中的绝对路径（排除文档）
+# 通过环境变量 LOCAL_PREFIX 指定需要检测的本机路径前缀，例如：
+#   LOCAL_PREFIX="/home/yourname/yourproject" bash check_opensource_ready.sh
+# 未设置时跳过该项检查。
+LOCAL_PREFIX="${LOCAL_PREFIX:-}"
+
 echo ""
 echo "2. 检查绝对路径..."
-ABSOLUTE_PATHS=$(grep -r "/root/zhaokj/test_model" \
-    --include="*.py" --include="*.sh" \
-    2>/dev/null | \
-    grep -v "logs/" | \
-    grep -v "CLEANUP_SUMMARY" | \
-    grep -v "check_opensource_ready" | \
-    wc -l)
-
-if [ "$ABSOLUTE_PATHS" -eq 0 ]; then
-    echo -e "${GREEN}✓${NC} 代码中无绝对路径"
-    ((PASS++))
-else
-    echo -e "${RED}✗${NC} 发现 ${ABSOLUTE_PATHS} 处绝对路径"
-    grep -rn "/root/zhaokj/test_model" \
+if [ -n "$LOCAL_PREFIX" ]; then
+    ABSOLUTE_PATHS=$(grep -r "$LOCAL_PREFIX" \
         --include="*.py" --include="*.sh" \
         2>/dev/null | \
         grep -v "logs/" | \
-        grep -v "CLEANUP_SUMMARY" | \
-        grep -v "check_opensource_ready"
-    ((FAIL++))
+        wc -l)
+
+    if [ "$ABSOLUTE_PATHS" -eq 0 ]; then
+        echo -e "${GREEN}✓${NC} 代码中无 \"$LOCAL_PREFIX\" 残留"
+        ((PASS++))
+    else
+        echo -e "${RED}✗${NC} 发现 ${ABSOLUTE_PATHS} 处 \"$LOCAL_PREFIX\" 残留"
+        grep -rn "$LOCAL_PREFIX" \
+            --include="*.py" --include="*.sh" \
+            2>/dev/null | \
+            grep -v "logs/"
+        ((FAIL++))
+    fi
+else
+    echo -e "${YELLOW}!${NC} 未设置 LOCAL_PREFIX，跳过本机路径检查"
 fi
 
 # 4. 检查必要文档

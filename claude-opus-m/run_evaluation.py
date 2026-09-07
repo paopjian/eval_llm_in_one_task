@@ -21,7 +21,7 @@ def main():
     print()
 
     cmd = [
-        "/root/miniconda3/envs/cvlface/bin/python",
+        sys.executable,   # 当前解释器（在 cvlface 环境激活状态下运行即为该环境 python）
         "eval_similarity_final.py",
         "--devices", "0,1,2,3,4,5,6",
         "--chunk_size", "2000",

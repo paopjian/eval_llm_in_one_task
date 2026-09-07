@@ -6,13 +6,17 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GLM_DIR="$(cd "$SCRIPT_DIR/../../glm-5.3" 2>/dev/null && pwd || echo "$SCRIPT_DIR")"
 
+# Python 解释器：默认使用 PATH 中的 python（通常是已激活的 conda 环境）。
+# 如需指定环境：PYTHON_BIN="$HOME/miniconda3/envs/cvlface/bin/python" bash quick_test.sh
+PYTHON_BIN="${PYTHON_BIN:-python}"
+
 cd "$GLM_DIR"
 
 echo "========================================="
 echo "快速性能测试 (7卡并行)"
 echo "========================================="
 
-/root/miniconda3/envs/cvlface/bin/python step3_multi_gpu.py \
+"$PYTHON_BIN" step3_multi_gpu.py \
     --gpus 0,1,2,3,4,5,6 \
     --block-rows 8192 \
     --block-cols 65536 \

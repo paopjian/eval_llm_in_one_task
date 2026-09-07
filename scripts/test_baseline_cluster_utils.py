@@ -24,7 +24,7 @@ try:
         print(f"✅ CUDA devices: {torch.cuda.device_count()}")
 except ImportError as e:
     print(f"❌ 环境错误: {e}")
-    print("请使用: source /root/miniconda3/bin/activate cvlface")
+    print("请使用: conda activate cvlface（或: source <您的conda安装路径>/bin/activate cvlface）")
     sys.exit(1)
 
 def load_cluster_utils():

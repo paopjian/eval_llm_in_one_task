@@ -2,7 +2,9 @@
 # 200万数据集 - 11个模型完整评估
 # 使用cvlface环境
 
-source /root/miniconda3/bin/activate cvlface
+# 激活 conda 环境 cvlface（conda 不在默认位置时，请设置 CONDA_BASE=<你的conda目录>）
+CONDA_BASE="${CONDA_BASE:-$HOME/miniconda3}"
+source "$CONDA_BASE/bin/activate" cvlface
 
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

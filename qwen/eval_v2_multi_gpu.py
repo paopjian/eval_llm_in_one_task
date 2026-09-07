@@ -11,8 +11,8 @@
   5. 绘图：相似度分布图 + TPIR@FPIR 曲线（中文字体）
   6. 全程计时，输出各阶段耗时
 
-用法示例：
-  LD_LIBRARY_PATH=/root/miniconda3/envs/cvlface/lib \
+用法示例（在已激活的 conda 环境中运行）：
+  LD_LIBRARY_PATH=$CONDA_PREFIX/lib \
   python eval_v2_multi_gpu.py --gpus 0,1,2,3,4,5,6 \
       --extract-threshold 0.4 --extract-mode both
 """
