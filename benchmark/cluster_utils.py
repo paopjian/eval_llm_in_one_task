@@ -2041,3 +2041,392 @@ def get_sim_matrix_large_scale_v5(
             return total_pos_hist.numpy(), total_neg_hist.numpy(), collected_pairs
 
     return total_pos_hist.numpy(), total_neg_hist.numpy()
+
+
+# ============================================================
+# V6: 吸收 glm 线程版优点 + 保留 v5 通用能力
+#   - block_size 默认 16384（更大 GEMM）
+#   - 单 tile 动态队列（行块序 + 行内宽优先），尾延迟更小
+#   - low_memory 下 row_cache：同一行块只 H2D 一次
+#   - sim 先 clamp 到 [LO,HI]（不丢越界对），单趟直方图 neg=full-pos
+#   - precision: 'fp32'(关TF32) / 'tf32' / 'fp16'
+#   - 保留 low_memory/high_performance、collect_pairs_config、show_progress
+# ============================================================
+
+import queue
+
+
+def _v6_gpu_worker(
+    feats, ids, tile_q, gpu_id, block_size, n,
+    hist_bins, hist_range,
+    collect_pairs_config, pair_collector, pos_pair_collector, neg_pair_collector,
+    memory_mode, precision, row_cache, hist_method, pbar, pbar_lock, out, slot
+):
+    """V6 GPU Worker：单 tile 动态队列 + 行块缓存 + 单趟直方图(neg=full-pos)"""
+    with torch.cuda.device(gpu_id):
+        device = torch.device(f'cuda:{gpu_id}')
+        LO, HI = float(hist_range[0]), float(hist_range[1])
+        FILL = LO - 2.0                     # 越界填充值，histc 会丢弃
+        scale = hist_bins / 2.0             # 量化 scale（bincount 用）
+        use_bincount = (hist_method == 'bincount')
+
+        # ---- 精度设置：fp32(关TF32) / tf32 / fp16 ----
+        use_fp16 = (precision == 'fp16')
+        use_tf32 = (precision == 'tf32')
+        torch.backends.cuda.matmul.allow_tf32 = use_tf32
+
+        ids_full = torch.as_tensor(ids, device=device)   # (N,) 常驻显存
+
+        use_gpu_feats = (memory_mode == 'high_performance')
+        if use_gpu_feats:
+            feats_source = feats.to(device)              # 特征常驻显存
+        else:
+            feats_source = feats                         # pinned CPU，按需 H2D
+
+        # ---- 解析样本对收集配置（与 v5 同语义）----
+        do_collect_single = False
+        do_collect_dual = False
+        sample_type = threshold_mode = threshold_val = None
+        pos_cfg = neg_cfg = None
+        if collect_pairs_config is not None:
+            if 'pos' in collect_pairs_config or 'neg' in collect_pairs_config:
+                do_collect_dual = True
+                pos_cfg = collect_pairs_config.get('pos', None)
+                neg_cfg = collect_pairs_config.get('neg', None)
+            elif pair_collector is not None:
+                do_collect_single = True
+                sample_type = collect_pairs_config.get('sample_type', 'neg')
+                threshold_mode = collect_pairs_config.get('threshold_mode', 'above')
+                threshold_val = collect_pairs_config.get('threshold', 0.5)
+        need_collect = (do_collect_single or do_collect_dual)
+
+        pos_hist = torch.zeros(hist_bins, device=device, dtype=torch.int64)
+        neg_hist = torch.zeros(hist_bins, device=device, dtype=torch.int64)
+
+        # 行块缓存（low_memory 下避免同一行块重复 H2D）
+        cached_bi = -1
+        cached_row = None
+
+        while True:
+            tile = tile_q.get()
+            if tile is None:
+                break
+            bi, bj, has_pos = tile
+            r0, r1 = bi * block_size, min((bi + 1) * block_size, n)
+            c0, c1 = bj * block_size, min((bj + 1) * block_size, n)
+            is_diag = (bi == bj)
+
+            # 行块：缓存命中复用，否则 H2D（或显存切片）
+            if use_gpu_feats:
+                block1 = feats_source[r0:r1]
+            elif row_cache and bi == cached_bi:
+                block1 = cached_row
+            else:
+                block1 = feats_source[r0:r1].to(device, non_blocking=True)
+                if row_cache:
+                    cached_bi, cached_row = bi, block1
+
+            # 列块：对角块复用行块，否则 H2D（或显存切片）
+            if is_diag:
+                block2 = block1
+            elif use_gpu_feats:
+                block2 = feats_source[c0:c1]
+            else:
+                block2 = feats_source[c0:c1].to(device, non_blocking=True)
+
+            # matmul
+            if use_fp16:
+                sim = torch.matmul(block1.half(), block2.half().T).float()
+            else:
+                sim = torch.matmul(block1, block2.T)     # fp32 / tf32
+            sim.clamp_(LO, HI)
+
+            # 身份等值掩码：仅本 tile 含正样本对 或 需要收集样本对 时才计算
+            if has_pos or need_collect:
+                label_eq = (ids_full[r0:r1, None] == ids_full[None, c0:c1])
+            else:
+                label_eq = None
+
+            if is_diag:
+                triu = torch.triu(
+                    torch.ones(r1 - r0, c1 - c0, device=device, dtype=torch.bool),
+                    diagonal=1)
+
+            # 单趟直方图前半：full（对角块先把下三角填范围外）
+            if use_bincount:
+                q = ((sim + 1.0) * scale).floor_().clamp_(0, hist_bins - 1).to(torch.int32)
+                if is_diag:
+                    full_hist = torch.bincount(q[triu], minlength=hist_bins).to(torch.int64)
+                else:
+                    full_hist = torch.bincount(q.reshape(-1), minlength=hist_bins).to(torch.int64)
+            else:
+                if is_diag:
+                    sim.masked_fill_(~triu, FILL)
+                full_hist = torch.histc(sim, bins=hist_bins, min=LO, max=HI).to(torch.int64)
+
+            # 样本对收集：在 pos 的 in-place masked_fill 之前做，直接用 sim（省掉整份 clone）
+            if need_collect:
+                if is_diag:
+                    valid_mask = triu
+                else:
+                    valid_mask = torch.ones(r1 - r0, c1 - c0, device=device, dtype=torch.bool)
+
+                if do_collect_single and not pair_collector.is_full():
+                    base = label_eq if sample_type == 'pos' else ~label_eq
+                    target = (base & valid_mask & (sim > threshold_val)) \
+                        if threshold_mode == 'above' else (base & valid_mask & (sim < threshold_val))
+                    _v5_collect_pairs(sim, target, r0, c0, pair_collector)
+                    del target
+
+                if do_collect_dual:
+                    if pos_cfg and pos_pair_collector and not pos_pair_collector.is_full():
+                        pt = pos_cfg.get('threshold_mode', 'below')
+                        pv = pos_cfg.get('threshold', 0.25)
+                        cond = sim > pv if pt == 'above' else sim < pv
+                        _v5_collect_pairs(sim, label_eq & valid_mask & cond,
+                                          r0, c0, pos_pair_collector)
+                    if neg_cfg and neg_pair_collector and not neg_pair_collector.is_full():
+                        nt = neg_cfg.get('threshold_mode', 'above')
+                        nv = neg_cfg.get('threshold', 0.5)
+                        cond = sim > nv if nt == 'above' else sim < nv
+                        _v5_collect_pairs(sim, (~label_eq) & valid_mask & cond,
+                                          r0, c0, neg_pair_collector)
+
+                del valid_mask
+
+            # 单趟直方图后半：pos + neg = full - pos
+            if use_bincount:
+                pos_block = None
+                if has_pos:
+                    sel = (triu & label_eq) if is_diag else label_eq
+                    pos_block = torch.bincount(q[sel], minlength=hist_bins).to(torch.int64)
+                    del sel
+                del q
+            else:
+                pos_block = None
+                if has_pos:
+                    sim.masked_fill_(~label_eq, FILL)
+                    pos_block = torch.histc(sim, bins=hist_bins, min=LO, max=HI).to(torch.int64)
+
+            if pos_block is not None:
+                pos_hist += pos_block
+                neg_hist += full_hist - pos_block
+                del pos_block
+            else:
+                neg_hist += full_hist
+            del full_hist, sim
+            if label_eq is not None:
+                del label_eq
+            if is_diag:
+                del triu
+
+            if pbar is not None:
+                with pbar_lock:
+                    pbar.update(1)
+
+        out[slot] = (pos_hist.cpu(), neg_hist.cpu())
+
+
+def _v6_pos_tile_flags(ids, block_size, n):
+    """静态判定哪些上三角块 (bi,bj) 含 >=1 条同身份样本对（保守：绝不漏标）。
+
+    对角块：块内某身份 >=2 个成员；非对角：某身份成员跨越块 [bf,bl] 时标记其间
+    全部 (b1<b2)。热路径据此跳过无正样本 tile 的身份等值比对（正样本对稀疏时
+    绝大多数 tile 可免比对）。"""
+    nb = math.ceil(n / block_size)
+    flags = set()
+    if n < 2:
+        return flags
+    ids = np.asarray(ids)
+    for bi in range(nb):
+        b0, b1 = bi * block_size, min((bi + 1) * block_size, n)
+        _, cnt = np.unique(ids[b0:b1], return_counts=True)
+        if cnt.size and int(cnt.max()) >= 2:
+            flags.add((bi, bi))
+    order = np.argsort(ids, kind='stable')
+    sid = ids[order]
+    starts = np.r_[0, np.flatnonzero(sid[1:] != sid[:-1]) + 1, n]
+    for s, e in zip(starts[:-1], starts[1:]):
+        if e - s < 2:
+            continue
+        bf = int(order[s]) // block_size
+        bl = int(order[e - 1]) // block_size
+        if bl > bf:
+            for b1 in range(bf, bl):
+                for b2 in range(b1 + 1, bl + 1):
+                    flags.add((b1, b2))
+    return flags
+
+
+def get_sim_matrix_large_scale_v6(
+    query_feats_list, query_ids=None, num_gpus=7, block_size=16384,
+    hist_bins=200_000, hist_range=(-1.0, 1.0),
+    collect_pairs_config=None, memory_mode='low_memory', show_progress=True,
+    precision='tf32', row_cache=True, pin_inplace=True,
+    hist_method='histc', skip_pos_check=True,
+):
+    """
+    cluster_utils v6 —— 吸收 glm 线程版 + deepseek(-pro) + codex-sol-2 优点，保留 v5 通用能力。
+
+    相比 v5 的改进:
+      - block_size 默认 16384（更大 GEMM，kernel 更少、GPU 利用率更高）
+      - 调度从"成批取块(1%/0.5%)"改为"单 tile 动态队列(行块序+行内宽优先)"，尾延迟更小
+      - low_memory 下支持 row_cache：同一行块只 H2D 一次（缓存复用），减少 PCIe 传输
+      - low_memory 下 pin_inplace=True 用 cudaHostRegister 原地锁定 numpy（零拷贝），
+        省掉 pin_memory() 的整份 pinned 副本（约一份 feats 大小）
+      - sim 先 clamp 到 [LO,HI]（不丢越界对），单趟直方图 neg = full - pos
+      - 精度三档 precision: 'fp32'(关TF32) / 'tf32' / 'fp16'
+      - hist_method='histc'（默认，torch 2.12 下实测比量化+bincount 快 ~30%）或
+        'bincount'（deepseek 式量化+GPU bincount，int64 精确，本环境实测更慢，保留备选）
+      - skip_pos_check=True（deepseek-pro 式）静态预标含正样本 tile，热路径对无正
+        样本 tile 免身份等值比对（本数据 96.8% tile 无正样本，2M 实测 +27%）
+    相比 v5 保留:
+      - low_memory / high_performance 两种显存模式
+      - collect_pairs_config 样本对收集（单/双模式）
+      - show_progress 进度条
+    """
+    if precision not in ('fp32', 'tf32', 'fp16'):
+        raise ValueError(f"precision 必须是 'fp32'/'tf32'/'fp16'，收到 {precision!r}")
+
+    if precision == 'fp16' and hist_bins > 2000:
+        print(f"[V6建议] fp16 有效分辨率约 0.001，当前 hist_bins={hist_bins:,} 偏细，"
+              f"如需最佳性能可设 2000（当前仍按 {hist_bins:,} 计算）")
+
+    if query_ids is None:
+        query_ids = np.arange(len(query_feats_list))
+    N = len(query_ids)
+
+    # ---- 准备数据 ----
+    if isinstance(query_feats_list, list):
+        query_feats_tensor = torch.from_numpy(np.array(query_feats_list))
+    elif isinstance(query_feats_list, np.ndarray):
+        query_feats_tensor = torch.from_numpy(query_feats_list)
+    else:
+        query_feats_tensor = query_feats_list
+
+    registered_ptr = None
+    if memory_mode == 'low_memory':
+        if query_feats_tensor.is_cuda:
+            query_feats_tensor = query_feats_tensor.cpu()
+        if pin_inplace and isinstance(query_feats_list, np.ndarray):
+            # 原地锁定 numpy 缓冲区（零拷贝），避免 pin_memory() 的整份 pinned 副本
+            arr = np.ascontiguousarray(query_feats_list, dtype=np.float32)
+            ptr = arr.ctypes.data
+            torch.cuda.cudart().cudaHostRegister(ptr, arr.nbytes, 0)
+            registered_ptr = ptr
+            query_feats_tensor = torch.from_numpy(arr).float().contiguous()
+        else:
+            query_feats_tensor = query_feats_tensor.float().contiguous().pin_memory()
+    else:
+        if not query_feats_tensor.is_cuda:
+            query_feats_tensor = query_feats_tensor.float().pin_memory()
+
+    # ---- 静态预标含正样本 tile（deepseek-pro 式，热路径免身份比对）----
+    if skip_pos_check:
+        flags = _v6_pos_tile_flags(np.asarray(query_ids), block_size, N)
+    else:
+        flags = None
+
+    # ---- 建 tile 队列：行块序 + 行内宽优先（利于行块缓存 + 大块优先）----
+    nb = math.ceil(N / block_size)
+    tiles = []
+    for bi in range(nb):
+        for bj in range(bi, nb):
+            has_pos = (flags is None) or ((bi, bj) in flags)
+            tiles.append((bi, bj, has_pos))
+    tiles.sort(key=lambda t: (t[0], -(t[1] - t[0])))
+    tile_q = queue.Queue()
+    for t in tiles:
+        tile_q.put(t)
+    for _ in range(num_gpus):
+        tile_q.put(None)
+    n_pos_tiles = sum(1 for t in tiles if t[2]) if flags is not None else len(tiles)
+    print(f"V6 tile 队列: 共 {len(tiles)} 块(含正样本 {n_pos_tiles}), block={block_size}, "
+          f"precision={precision}, hist={hist_method}, row_cache={row_cache}, mode={memory_mode}")
+
+    # ---- 收集器准备（与 v5 同语义）----
+    pair_collector = pos_pair_collector = neg_pair_collector = None
+    is_dual_mode = False
+    if collect_pairs_config is not None:
+        if 'pos' in collect_pairs_config or 'neg' in collect_pairs_config:
+            is_dual_mode = True
+            if 'pos' in collect_pairs_config:
+                pos_pair_collector = PairCollector(
+                    max_pairs=collect_pairs_config['pos'].get('max_pairs', -1))
+            if 'neg' in collect_pairs_config:
+                neg_pair_collector = PairCollector(
+                    max_pairs=collect_pairs_config['neg'].get('max_pairs', -1))
+        else:
+            pair_collector = PairCollector(
+                max_pairs=collect_pairs_config.get('max_pairs', -1))
+
+    start = time.time()
+    pbar = tqdm(total=len(tiles), desc="Matrix Cal v6", disable=not show_progress) \
+        if show_progress else None
+    pbar_lock = threading.Lock()
+
+    out = [None] * num_gpus
+    threads = []
+    try:
+        for gpu_id in range(num_gpus):
+            th = threading.Thread(
+                target=_v6_gpu_worker,
+                args=(query_feats_tensor, query_ids, tile_q, gpu_id, block_size, N,
+                      hist_bins, hist_range, collect_pairs_config,
+                      pair_collector, pos_pair_collector, neg_pair_collector,
+                      memory_mode, precision, row_cache, hist_method,
+                      pbar, pbar_lock, out, gpu_id),
+                name=f'v6-gpu-{gpu_id}',
+            )
+            th.start()
+            threads.append(th)
+        for th in threads:
+            th.join()
+    finally:
+        if registered_ptr is not None:
+            torch.cuda.cudart().cudaHostUnregister(registered_ptr)
+    if pbar is not None:
+        pbar.close()
+
+    results = []
+    for r in out:
+        if r is None or isinstance(r, Exception):
+            raise RuntimeError(f'V6 worker 失败: {r!r}')
+        results.append(r)
+
+    print(f"计算总耗时: {time.time() - start:.2f} 秒")
+
+    for gid in range(num_gpus):
+        with torch.cuda.device(gid):
+            torch.cuda.empty_cache()
+
+    total_pos_hist = torch.zeros(hist_bins, dtype=torch.int64)
+    total_neg_hist = torch.zeros(hist_bins, dtype=torch.int64)
+    for p_hist, n_hist in results:
+        total_pos_hist += p_hist
+        total_neg_hist += n_hist
+
+    print(f"Total Pos Pairs: {total_pos_hist.sum().item()}")
+    print(f"Total Neg Pairs: {total_neg_hist.sum().item()}")
+
+    if collect_pairs_config is not None:
+        if is_dual_mode:
+            pos_collected = pos_pair_collector.get_pairs() if pos_pair_collector else []
+            neg_collected = neg_pair_collector.get_pairs() if neg_pair_collector else []
+            if pos_collected:
+                pos_tmode = collect_pairs_config['pos'].get('threshold_mode', 'below')
+                pos_collected.sort(key=lambda x: x[2], reverse=(pos_tmode == 'above'))
+                print(f"Collected POS Pairs: {len(pos_collected)}")
+            if neg_collected:
+                neg_tmode = collect_pairs_config['neg'].get('threshold_mode', 'above')
+                neg_collected.sort(key=lambda x: x[2], reverse=(neg_tmode == 'above'))
+                print(f"Collected NEG Pairs: {len(neg_collected)}")
+            return total_pos_hist.numpy(), total_neg_hist.numpy(), pos_collected, neg_collected
+        else:
+            collected_pairs = pair_collector.get_pairs()
+            threshold_mode = collect_pairs_config.get('threshold_mode', 'above')
+            collected_pairs.sort(key=lambda x: x[2], reverse=(threshold_mode == 'above'))
+            print(f"Collected Pairs: {len(collected_pairs)}")
+            return total_pos_hist.numpy(), total_neg_hist.numpy(), collected_pairs
+
+    return total_pos_hist.numpy(), total_neg_hist.numpy()
