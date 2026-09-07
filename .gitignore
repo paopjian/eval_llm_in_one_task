@@ -44,3 +44,7 @@ temp/
 *.bak
 *.backup
 
+# cc-switch 本地数据副本(含 API Key 等敏感凭据,禁止入库)
+ccswitch-workdir/home/
+cc-switch-inspect/
+

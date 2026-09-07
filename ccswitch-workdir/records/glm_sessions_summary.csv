@@ -1,0 +1,4 @@
+project_dir,session_id,model,requests,input_tokens,output_tokens,cache_read_tokens,cost_usd
+/root/zhaokj/test_model/glm,199e19ab-ff00-4d6f-9e5f-8375fdf02695,glm-5.3-flash,2,22495,303,22272,0.0
+/root/zhaokj/test_model/glm,2dac401e-8263-4142-9343-e81dd3c5d6a4,glm-5.3-flash,31,285234,59587,1913152,0.0
+/root/zhaokj/test_model/glm-5.3,c1763a82-f203-4bda-b95d-be5cd4ee438e,glm-5.3,64,203836,146461,5677632,0.0

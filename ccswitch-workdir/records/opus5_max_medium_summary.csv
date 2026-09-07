@@ -1,0 +1,3 @@
+group,session_id,project_dir,run_time_utc,requests,input_tokens,output_tokens,cache_creation,cache_read,cost_usd
+max,010e1f51-7e4d-4ffc-bc25-9c2313816562,/root/zhaokj/test_model/claude-opus,2026-09-05 09:25~16:36 (UTC),154,72174,78461,1082946,14831901,16.506758
+medium,f894caa7-dbec-462e-ab94-75f78f931c0f,/root/zhaokj/test_model/claude-opus-m,2026-09-06 05:18~05:53 (UTC),45,90,22035,98840,2794731,2.566441

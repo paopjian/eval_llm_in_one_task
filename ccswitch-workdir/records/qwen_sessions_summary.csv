@@ -1,0 +1,3 @@
+session_id,requests,input_tokens,output_tokens,cache_read_tokens,cache_creation_tokens,cost_usd
+c81fd4dd-8214-44d8-9e87-acaf55b29d60,54,324,56968,3611114,165697,1.659477
+a98c010d-01f5-496d-8e9c-f1488c6dd183,2,12,220,22832,22915,0.064339

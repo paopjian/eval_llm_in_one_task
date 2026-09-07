@@ -1,0 +1,12 @@
+app_type,provider_id,model,requests,input_tokens,output_tokens,cache_read_tokens,cache_creation_tokens,cost_usd
+claude,_session,claude-opus-5,7606,33584287,3896384,664810603,49406190,906.525024
+codex,_codex_session,gpt-5.6-sol,1817,196393952,1370069,163149532,0,288.898936
+claude,_session,qwen3.8-max,56,336,57188,3633946,188612,1.723817
+pi,claude-awsq,claude-opus-5,19,11346,2375,95258,39359,0.409728
+claude,_session,claude-sonnet-5,11,51199,4134,73030,7702,0.266398
+claude,_session,claude-sonnet-4-6,13,39,3859,309766,27781,0.255111
+pi,claude-awsq,claude-sonnet-5,2,14,418,160,6768,0.03174
+claude,_session,grok-4.5,3,2882,1243,1984,0,0.013817
+claude,_session,glm-5.3,64,203836,146461,5677632,0,0.0
+claude,_session,glm-5.3-flash,33,307729,59890,1935424,0,0.0
+pi,anthropic,claude-opus-4-8,1,0,0,0,0,0.0

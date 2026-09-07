@@ -1,0 +1,6 @@
+project_dir,session_id,run_time,requests,input_tokens,output_tokens,cache_creation,cache_read,cost_usd
+/root/zhaokj/test_model(根),4fbb1fb9,09-05 08:46~09-06 02:59,283,564,160961,1692548,30471357,29.840948
+/root/zhaokj/test_model(根),e1a25fba,09-05 12:42~18:07,44,88,20943,251868,3446080,3.82123
+/root/zhaokj/test_model/claude-opus,010e1f51,09-05 09:25~16:36,154,72174,78461,1082946,14831901,16.506758
+/root/zhaokj/test_model/claude-opus-m,f894caa7,09-06 05:18~05:53,45,90,22035,98840,2794731,2.566441
+/root/zhaokj/test_model(根),22307808,09-06 03:06~03:14,15,30,16556,70902,759110,1.236743

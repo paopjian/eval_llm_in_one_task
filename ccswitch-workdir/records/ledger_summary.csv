@@ -1,0 +1,13 @@
+组,app/CLI,模型口径,时段(UTC),执行跨度(墙钟),有效执行(剔除>10min空档),请求/条目,输入(新),输出,缓存读,缓存写/思考,"USD标记(仅估算参考,非计费)",来源/会话
+qwen 测试,claude(Claude Code),qwen3.8-max,09-06 04:13~04:51,37m20s(首末请求),40m41s,56 req,336,"57,188","3,633,946","cacheW 188,612",1.7238(标记),cc库; 冒烟a98c010d 2 + 任务c81fd4dd 54(文件夹qwen)
+Zhipu GLM(普通),claude(Claude Code),glm-5.3-flash,09-05 18:40~09-06 02:37,"7h37m56s(隔夜,含空闲)",46m50s(5min口径29m43s),33 req,"307,729","59,890","1,935,424",0,"0(标记,定价缺失)",cc库; 冒烟199e19ab 2 + 任务2dac401e 31(文件夹glm)
+Zhipu GLM pro版,claude(Claude Code),glm-5.3,09-06 02:42~03:56,55m14s,57m15s,64 req,"203,836","146,461","5,677,632",0,"0(标记,定价缺失)",cc库; c1763a82(文件夹glm-5.3)
+测试grok 冒烟,xAI grok CLI→bytecatcode,grok-4.6-build,09-05 18:11~18:14,1m40s(会话),—,2 model calls,"20,453","1,068","10,368",reasoning 976,"ticks 296,884,000(原始)","grok updates.jsonl; 01a072c5(根,你好)"
+测试grok 主任务,xAI grok CLI→bytecatcode,grok-4.6-build,09-05 18:21~18:54,32m42s(会话),23m49s(API回合),24 model calls,"1,596,085","58,814","1,418,880","reasoning 30,538","ticks 2,408,447,800(原始)",grok updates.jsonl; 01a072cd(文件夹grok)
+测试gemini 冒烟,Gemini CLI→bytecatcode,gemini-3.5-flash(实测),09-05 15:51~15:52,1m02s(首末消息),—,2 轮,"22,100",62,0,thoughts 306,-,gemini 会话jsonl; c2b2f9b2
+测试gemini 主任务,Gemini CLI→bytecatcode,gemini-3.5-flash(实测),09-05 15:57~16:10,12m23s(首末消息),12m23s,37 轮,"1,436,228","31,944","cached 952,938","thoughts 9,536",-,gemini 会话jsonl; a12cece3(文件夹gemini)
+测试opus5 max,claude(Claude Code),claude-opus-5,09-05 09:25~16:37,3h40m54s(首末请求;会话7h11m),2h00m07s(5min口径1h37m),154 req,"72,174","78,461","14,831,901","cacheW 1,082,946",16.5068(标记),cc库; 010e1f51(文件夹claude-opus)
+测试opus5 medium,claude(Claude Code),claude-opus-5,09-06 05:18~05:54,27m36s(首末请求;会话35m54s),35m54s,45 req,90,"22,035","2,794,731","cacheW 98,840",2.5664(标记),cc库; f894caa7(文件夹claude-opus-m)
+codex sol max 第1轮(可能见答案),codex CLI,gpt-5.6-sol,09-05 13:16~16:05,2h49m03s(两段合计),2h25m58s(段间~24m另计),134 req,"10,158,748","122,847","9,186,129",0,13.1416(标记),"cc库; 01a071b5(120)+01a07234(14),文件夹codex-sol"
+codex sol max 重启(codex-sol-2),codex CLI,gpt-5.6-sol,09-05 16:16~17:16,59m29s,59m52s,97 req,"10,789,186","216,626","8,826,341",0,20.7262(标记),cc库; 01a07254(文件夹codex-sol-2)
+codex sol medium,codex CLI,gpt-5.6-sol,09-06 06:38~08:41,2h02m24s,"10m25s(或低估,长空档可能含自跑进程)",35 req,"809,180","7,961","676,864",0,1.2388(标记),cc库; 01a0756e(文件夹codex-sol-m)
