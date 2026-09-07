@@ -1,0 +1,93 @@
+{
+  "test_time": "2026-09-06 11:58:37",
+  "models": {
+    "claude-opus": {
+      "script": "eval_v5_final.py",
+      "script_path": "claude-opus/eval_v5_final.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 208
+    },
+    "claude-opus-m": {
+      "script": "eval_similarity_final.py",
+      "script_path": "claude-opus-m/eval_similarity_final.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 312
+    },
+    "codex-sol": {
+      "script": "face_similarity_eval.py",
+      "script_path": "codex-sol/face_similarity_eval.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 750
+    },
+    "codex-sol-2": {
+      "script": "face_similarity_evaluator.py",
+      "script_path": "codex-sol-2/face_similarity_evaluator.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 939
+    },
+    "codex-sol-m": {
+      "script": "face_similarity_eval.py",
+      "script_path": "codex-sol-m/face_similarity_eval.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 95
+    },
+    "deepseek": {
+      "script": "run_eval.py",
+      "script_path": "deepseek/run_eval.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 156
+    },
+    "deepseek-pro": {
+      "script": "step4_eval_optimized.py",
+      "script_path": "deepseek-pro/step4_eval_optimized.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 578
+    },
+    "gemini": {
+      "script": "face_eval_system.py",
+      "script_path": "gemini/face_eval_system.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 552
+    },
+    "glm": {
+      "script": "eval_similar.py",
+      "script_path": "glm/eval_similar.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 483
+    },
+    "grok": {
+      "script": "eval_similarity.py",
+      "script_path": "grok/eval_similarity.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 675
+    },
+    "qwen": {
+      "script": "eval_v1_single_gpu.py",
+      "script_path": "qwen/eval_v1_single_gpu.py",
+      "has_data": false,
+      "data_file": null,
+      "can_import": true,
+      "code_lines": 208
+    }
+  }
+}
