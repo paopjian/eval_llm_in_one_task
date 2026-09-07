@@ -499,7 +499,7 @@ gemini/
 
 ```bash
 cd gemini
-/root/miniconda3/envs/cvlface/bin/python face_eval_system.py \
+python face_eval_system.py \
     --data_path s4_0618_enhance.pkl \
     --num_gpus 7 \
     --chunk_size 4096 \

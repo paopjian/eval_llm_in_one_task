@@ -30,8 +30,8 @@
 
 **替换模式**：
 ```bash
-# 修改前
-cd /root/zhaokj/test_model/eval_llm_in_one_task
+# 修改前（<本机工作目录> 为原机器上的目录前缀）
+cd <本机工作目录>/eval_llm_in_one_task
 
 # 修改后
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,7 +44,7 @@ cd "$SCRIPT_DIR"
 **替换模式**：
 ```python
 # 修改前
-cluster_utils_path = '/root/zhaokj/test_model/cluster_utils.py'
+cluster_utils_path = '<本机工作目录>/cluster_utils.py'
 
 # 修改后
 script_dir = Path(__file__).parent
@@ -57,7 +57,7 @@ cluster_utils_path = script_dir.parent / 'cluster_utils.py'
 **替换示例**：
 ```json
 // 修改前
-"script_path": "/root/zhaokj/test_model/eval_llm_in_one_task/claude-opus/eval_v5_final.py"
+"script_path": "<本机工作目录>/eval_llm_in_one_task/claude-opus/eval_v5_final.py"
 
 // 修改后
 "script_path": "claude-opus/eval_v5_final.py"
@@ -67,9 +67,9 @@ cluster_utils_path = script_dir.parent / 'cluster_utils.py'
 ✅ 所有.md文件中的绝对路径已替换为相对路径
 
 **替换规则**：
-- `cd /root/zhaokj/test_model/xxx` → `cd ./xxx`
-- `/root/zhaokj/test_model/eval_llm_in_one_task/` → `./`
-- `/root/zhaokj/test_model/` → 移除前缀
+- `cd <本机工作目录>/xxx` → `cd ./xxx`
+- `<本机工作目录>/eval_llm_in_one_task/` → `./`
+- `<本机工作目录>/` → 移除前缀
 
 ### 3. Git配置
 
@@ -96,7 +96,8 @@ results/           # 结果文件
 ### 绝对路径检查
 ```bash
 # 代码文件检查
-grep -r "/root/zhaokj/test_model" --include="*.py" --include="*.sh" --include="*.md"
+# 代码文件检查（将 <本机工作目录> 替换为原路径前缀）
+grep -r "<本机工作目录>" --include="*.py" --include="*.sh" --include="*.md"
 # 结果：0处（排除logs/目录）
 ```
 
@@ -152,7 +153,7 @@ logs/
 
 ## 注意事项
 
-1. **环境依赖**：保留了 `/root/miniconda3/bin/activate cvlface`，这是环境激活命令，建议在README中说明需要用户根据自己的环境修改。
+1. **环境依赖**：脚本中保留了 conda 环境激活命令（`conda activate cvlface`），README 已说明用户需按自己的环境修改。
 
 2. **外部依赖**：`glm-pro/quick_test.sh` 引用外部目录，已添加注释说明。
 

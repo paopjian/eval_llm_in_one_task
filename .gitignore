@@ -8,6 +8,7 @@ test_data_*.pkl
 
 # Python缓存
 __pycache__/
+.mplconfig/
 *.pyc
 *.pyo
 *.pyd

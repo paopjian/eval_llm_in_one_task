@@ -48,7 +48,7 @@ cd claude-opus/  # 或其他模型文件夹
 
 要求：
 1. 从零开始编写代码
-2. 使用 /root/miniconda3/envs/cvlface 环境
+2. 使用 conda 的 cvlface 环境
 3. 不安装新库，只用已有库
 4. 数据文件：s4_0618_enhance.pkl
 5. 支持7卡并行

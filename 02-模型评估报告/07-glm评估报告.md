@@ -458,7 +458,7 @@ glm/
 
 ```bash
 cd glm
-/root/miniconda3/envs/cvlface/bin/python eval_similar.py
+python eval_similar.py
 ```
 
 ### C. 核心技术

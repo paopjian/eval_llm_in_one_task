@@ -120,7 +120,7 @@ pip install torch torchvision numpy
 
 # 注意：项目中的shell脚本默认使用cvlface环境
 # 请根据您的实际环境修改脚本中的环境激活命令：
-# source /root/miniconda3/bin/activate cvlface
+# conda activate cvlface    # 或: source <您的conda安装路径>/bin/activate cvlface
 # 改为您自己的环境
 ```
 

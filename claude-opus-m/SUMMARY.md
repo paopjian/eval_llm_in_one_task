@@ -108,13 +108,13 @@ TPIR @ FPIR=1e-02: 96.67% (阈值=0.2332) [预期: 95-97%] ✅
 
 ```bash
 # 方法1：直接运行
-/root/miniconda3/envs/cvlface/bin/python eval_similarity_final.py
+python eval_similarity_final.py
 
 # 方法2：使用启动脚本
-/root/miniconda3/envs/cvlface/bin/python run_evaluation.py
+python run_evaluation.py
 
 # 自定义参数
-/root/miniconda3/envs/cvlface/bin/python eval_similarity_final.py \
+python eval_similarity_final.py \
     --devices 0,1,2,3 \
     --chunk_size 1000 \
     --output my_results.png

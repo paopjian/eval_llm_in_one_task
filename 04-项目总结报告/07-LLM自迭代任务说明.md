@@ -6,7 +6,7 @@
 
 ## 环境说明
 
-- **Python环境**: `/root/miniconda3/envs/cvlface`（已激活）
+- **Python环境**: `cvlface`（已激活）
 - **可用显卡**: 7张GPU（cuda:0 到 cuda:6）
 - **库限制**: 禁止安装任何新库，只能使用环境中已有的库
 - **数据路径**: `s4_0618_enhance.pkl`
@@ -15,7 +15,7 @@
 
 特征文件是用以下脚本提取的：
 ```python
-# 提取脚本路径：/root/zhaokj/cv_datapipe6/6.数据集构建/评估测试集/extract_features.py
+# 提取脚本路径：cv_datapipe6/6.数据集构建/评估测试集/extract_features.py
 # 数据结构
 import pickle
 with open('s4_0618_enhance.pkl', 'rb') as f:

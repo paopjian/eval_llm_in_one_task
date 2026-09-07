@@ -181,7 +181,7 @@
 FONT_PATH = 'font/SourceHanSansSC-Normal.otf'
 
 # ✅ 正确
-FONT_PATH = '/root/zhaokj/font/SourceHanSansSC-Normal.otf'
+FONT_PATH = 'font/SourceHanSansSC-Normal.otf'
 ```
 
 ### 2. 简单不一定慢

@@ -83,7 +83,7 @@
 ### 基本用法
 
 ```bash
-/root/miniconda3/envs/cvlface/bin/python eval_similarity_final.py \
+python eval_similarity_final.py \
     --devices 0,1,2,3,4,5,6 \
     --chunk_size 2000 \
     --output evaluation_results.png

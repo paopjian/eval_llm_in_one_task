@@ -366,7 +366,7 @@ threshold = np.percentile(neg_sims, percentile)
 ### 运行实例
 
 ```bash
-$ /root/miniconda3/envs/cvlface/bin/python eval_v8_histogram.py
+$ python eval_v8_histogram.py
 
 配置:
   GPU数量: 7

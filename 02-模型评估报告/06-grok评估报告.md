@@ -457,7 +457,7 @@ grok/
 
 ```bash
 cd grok
-/root/miniconda3/envs/cvlface/bin/python eval_similarity.py
+python eval_similarity.py
 ```
 
 ### C. 核心技术

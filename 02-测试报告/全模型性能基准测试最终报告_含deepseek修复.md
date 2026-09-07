@@ -76,7 +76,7 @@
 
 **deepseek修复说明**:
 - 问题：`faireval_lib.py` 中字体路径为相对路径 `'font/SourceHanSansSC-Normal.otf'`
-- 修复：改为绝对路径 `'/root/zhaokj/font/SourceHanSansSC-Normal.otf'`
+- 修复：改为绝对路径 `'font/SourceHanSansSC-Normal.otf'`
 - 结果：修复后成功运行，10.77秒完成1分钟级测试
 
 ### 2. 没有模型跑赢cluster_utils基准

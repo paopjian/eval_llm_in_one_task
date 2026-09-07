@@ -58,7 +58,7 @@ bash memory_monitor.sh
 
 所有脚本默认使用 `cvlface` conda环境，请根据实际情况修改：
 ```bash
-source /root/miniconda3/bin/activate cvlface  # 改为你的环境
+conda activate cvlface  # 或: source <您的conda路径>/bin/activate cvlface
 ```
 
 ## 📝 注意事项
